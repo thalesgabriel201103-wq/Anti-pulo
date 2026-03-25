@@ -1,0 +1,151 @@
+local player = game.Players.LocalPlayer
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+
+-- BOTÃO
+local button = Instance.new("TextButton")
+button.Parent = gui
+button.Size = UDim2.new(0, 150, 0, 55)
+button.Position = UDim2.new(0.75, 0, 0.75, 0)
+button.Text = "ANTI PULO: OFF"
+button.TextScaled = true
+button.Font = Enum.Font.GothamBold
+button.TextColor3 = Color3.fromRGB(255,255,255)
+button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+button.AutoButtonColor = false
+
+-- 🔲 Bordas arredondadas
+local corner = Instance.new("UICorner", button)
+corner.CornerRadius = UDim.new(0, 25)
+
+-- 🌑 Sombra
+local shadow = Instance.new("Frame")
+shadow.Parent = button
+shadow.Size = UDim2.new(1, 8, 1, 8)
+shadow.Position = UDim2.new(0, -4, 0, -4)
+shadow.BackgroundColor3 = Color3.fromRGB(0,0,0)
+shadow.BackgroundTransparency = 0.5
+shadow.ZIndex = 0
+
+local shadowCorner = Instance.new("UICorner", shadow)
+shadowCorner.CornerRadius = UDim.new(0, 25)
+
+button.ZIndex = 1
+
+-- 🎞️ ANIMAÇÃO
+local TweenService = game:GetService("TweenService")
+
+local function animarClique()
+    local press = TweenService:Create(button, TweenInfo.new(0.08), {
+        Size = UDim2.new(0, 140, 0, 50)
+    })
+    press:Play()
+
+    press.Completed:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.12, Enum.EasingStyle.Back), {
+            Size = UDim2.new(0, 150, 0, 55)
+        }):Play()
+    end)
+end
+
+-- 🔥 ANTI PULO
+local antiPulo = false
+
+local function aplicarAntiPulo(char)
+    local humanoid = char:WaitForChild("Humanoid")
+
+    while antiPulo and humanoid do
+        humanoid.JumpPower = 0
+        humanoid.JumpHeight = 0
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
+
+        if humanoid:GetState() == Enum.HumanoidStateType.Jumping then
+            humanoid:ChangeState(Enum.HumanoidStateType.Running)
+        end
+
+        task.wait(0.05)
+    end
+end
+
+-- Respawn
+player.CharacterAdded:Connect(function(char)
+    if antiPulo then
+        task.spawn(function()
+            aplicarAntiPulo(char)
+        end)
+    end
+end)
+
+-- Clique (toggle)
+button.MouseButton1Click:Connect(function()
+    animarClique()
+    antiPulo = not antiPulo
+
+    if antiPulo then
+        button.Text = "ANTI PULO: ON"
+        button.BackgroundColor3 = Color3.fromRGB(0, 170, 80)
+
+        if player.Character then
+            task.spawn(function()
+                aplicarAntiPulo(player.Character)
+            end)
+        end
+    else
+        button.Text = "ANTI PULO: OFF"
+        button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+
+        if player.Character then
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.JumpPower = 50
+                humanoid.JumpHeight = 7.2
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+            end
+        end
+    end
+end)
+
+-- 📱 DRAG (ARRASTAR)
+local UIS = game:GetService("UserInputService")
+local dragging = false
+local dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    button.Position = UDim2.new(
+        startPos.X.Scale,
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale,
+        startPos.Y.Offset + delta.Y
+    )
+end
+
+button.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch 
+    or input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+        dragging = true
+        dragStart = input.Position
+        startPos = button.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+button.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch 
+    or input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
